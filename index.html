@@ -14,6 +14,7 @@
 <link rel="icon" type="image/jpeg" href="icon.jpg">
 <link rel="apple-touch-icon" href="icon.jpg">
 
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.6.0/gsap.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -53,13 +54,13 @@
     transition: opacity 1s ease, transform 1s ease;
     padding: 20px; text-align: center; z-index: 10;
   }
-  
+   
   .hidden { opacity: 0; pointer-events: none; transform: scale(0.95); z-index: -1; }
 
   /* --- 3. INTRO SCREEN --- */
   .intro-emoji { font-size: 5rem; animation: float 3s ease-in-out infinite; text-shadow: 0 0 30px rgba(255,183,178,0.4); }
   @keyframes float { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-15px);} }
-  
+   
   h1 { font-family: 'Dancing Script', cursive; font-size: 3.5rem; margin: 10px 0; background: linear-gradient(to right, #fff, #ffb7b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
   .start-btn {
@@ -122,7 +123,7 @@
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
     z-index: 200;
   }
-  
+   
   /* Floating Hearts Background */
   .bg-hearts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
   .bg-heart {
@@ -184,10 +185,10 @@
       transform: translateY(10px); opacity: 0;
   }
   .signature { font-weight: 700; margin-top: 15px; color: #d62828; }
-  
+   
   /* Burst Hearts coming from INSIDE */
   .burst-heart { position: absolute; font-size: 1.5rem; color: #d62828; pointer-events: none; z-index: 8; }
-  
+   
   .sticker {
       position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
       font-size: 3rem; color: #e63946; z-index: 100; cursor: pointer;
@@ -196,7 +197,7 @@
   }
   @keyframes heartbeat { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.15); } }
   .flap-open .flap { transform: rotateX(180deg); z-index: 0; }
-  
+   
   /* Restart Button Style */
   .restart-btn {
     margin-top: 20px; padding: 10px 20px; background: #ffb7b2; color: white;
@@ -255,7 +256,7 @@
   <div class="envelope-wrapper">
     <div id="envelope">
       <div class="back-paper"></div>
-      
+       
       <div class="letter-paper" id="letter-paper">
         <div class="letter-content">
             <p><b>To My Favorite Person,</b></p>
@@ -269,7 +270,7 @@
             <button class="restart-btn" onclick="location.reload()">Restart Journey 🔄</button>
         </div>
       </div>
-      
+       
       <div class="pocket"></div>
       <div class="flap"></div>
       <div class="sticker">♥</div>
@@ -444,13 +445,22 @@ function showMemory() {
   document.getElementById('memory-img').src = data.image; document.getElementById('memory-msg').textContent = data.note;
   overlay.classList.remove('hidden'); setTimeout(() => card.classList.add('show'), 100);
 }
+
+// --- MODIFIED FUNCTION TO TRIGGER CONFETTI ---
 function nextLevel() {
   const card = document.getElementById('memory-card'); card.classList.remove('show');
   setTimeout(() => {
     document.getElementById('memory-overlay').classList.add('hidden');
-    currentLevel++; if(currentLevel < levels.length) initLevel(); else showFinale();
+    currentLevel++; 
+    if(currentLevel < levels.length) {
+        initLevel(); 
+    } else {
+        showFinale();
+        fireConfetti(); // 🎉 Trigger Confetti!
+    }
   }, 500);
 }
+
 function showFinale() { document.getElementById('game-screen').classList.add('hidden'); document.getElementById('final-screen').classList.remove('hidden'); }
 
 // --- 💌 LETTER ANIMATION ---
@@ -497,40 +507,37 @@ letterPaper.addEventListener('click', () => {
 
 function releaseHearts() {
     const count = 30;
-    // We don't need screen coordinates anymore because we are attaching to the envelope
     for (let i = 0; i < count; i++) {
         const heart = document.createElement('div');
         heart.classList.add('burst-heart');
         heart.innerHTML = '❤';
-        
-        // FIX: Append to the envelope, NOT the body
         envelope.appendChild(heart);
-        
-        // Set initial position to the CENTER of the envelope
-        gsap.set(heart, { 
-            left: '50%', 
-            top: '50%', // Start from the middle
-            xPercent: -50, 
-            yPercent: -50, 
-            scale: 0 
-        });
-
-        // Calculate random explosion directions
-        // We use window width to ensure they fly far enough out
+        gsap.set(heart, { left: '50%', top: '50%', xPercent: -50, yPercent: -50, scale: 0 });
         const randomX = (Math.random() - 0.5) * window.innerWidth * 0.5; 
-        const randomY = - (Math.random() * 300) - 100; // Force them to fly UPWARDS out of the pocket
-
+        const randomY = - (Math.random() * 300) - 100;
         gsap.to(heart, {
-            x: randomX,
-            y: randomY,
-            rotation: Math.random() * 360,
-            scale: 0.5 + Math.random(),
-            opacity: 0,
-            duration: 1.5 + Math.random(),
-            ease: "power2.out",
+            x: randomX, y: randomY, rotation: Math.random() * 360, scale: 0.5 + Math.random(),
+            opacity: 0, duration: 1.5 + Math.random(), ease: "power2.out",
             onComplete: () => heart.remove()
         });
     }
+}
+
+// --- 🎉 CONFETTI FUNCTION ---
+function fireConfetti() {
+    const duration = 7 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 10, spread: 250, ticks: 40, zIndex: 0 };
+
+    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+    const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) return clearInterval(interval);
+        const particleCount = 50 * (timeLeft / duration);
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors: ['#ffb7b2', '#ffd700', '#ffffff'] }));
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors: ['#ffb7b2', '#ffd700', '#ffffff'] }));
+    }, 250);
 }
 </script>
 </body>
