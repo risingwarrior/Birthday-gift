@@ -56,6 +56,12 @@
   
   .hidden { opacity: 0; pointer-events: none; transform: scale(0.95); z-index: -1; }
 
+  /* --- 3. INTRO SCREEN --- */
+  .intro-emoji { font-size: 5rem; animation: float 3s ease-in-out infinite; text-shadow: 0 0 30px rgba(255,183,178,0.4); }
+  @keyframes float { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-15px);} }
+  
+  h1 { font-family: 'Dancing Script', cursive; font-size: 3.5rem; margin: 10px 0; background: linear-gradient(to right, #fff, #ffb7b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
   .start-btn {
     background: var(--glass); border: 1px solid var(--glass-border); color: white;
     padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; cursor: pointer;
@@ -209,8 +215,8 @@
 </audio>
 
 <div id="intro-screen" class="screen">
-  <div style="font-size: 4rem; margin-bottom: 20px;">✨</div>
-  <h1 style="font-weight: normal; margin-bottom: 10px;">A Journey of Us</h1>
+  <div class="intro-emoji">✨</div>
+  <h1 style="font-weight: normal; margin-bottom: 10px;">For You, Sneha</h1>
   <p style="opacity: 0.8; margin-bottom: 30px;">Turn up your volume 🔊</p>
   <button class="start-btn" onclick="startGame()">Begin Journey</button>
 </div>
