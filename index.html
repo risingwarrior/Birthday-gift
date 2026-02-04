@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>For You 💖</title>
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2c0e37">
+
+<link rel="icon" type="image/jpg" href="icon.jpg">
+<link rel="apple-touch-icon" href="icon.jpg">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.6.0/gsap.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* --- 1. GENERAL CSS --- */
+  :root {
+    --bg-deep: #2c0e37;
+    --bg-light: #6f2c68;
+    --accent: #ffb7b2;
+    --gold: #ffd700;
+    --text: #fff;
+    --glass: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+  }
+
+  * { box-sizing: border-box; touch-action: manipulation; }
+
+  body {
+    margin: 0;
+    font-family: 'Georgia', serif;
+    background: radial-gradient(circle at center, var(--bg-light), var(--bg-deep));
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+
+  /* --- 2. GAME SCREENS --- */
+  .screen {
+    position: absolute; width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 1s ease, transform 1s ease;
+    padding: 20px; text-align: center; z-index: 10;
+  }
+  
+  .hidden { opacity: 0; pointer-events: none; transform: scale(0.95); z-index: -1; }
+
+  .start-btn {
+    background: var(--glass); border: 1px solid var(--glass-border); color: white;
+    padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; cursor: pointer;
+    backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(255, 183, 178, 0.3);
+    animation: pulse 2s infinite; margin-top: 20px;
+  }
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+
+  /* --- 3. GAME UI --- */
+  .level-indicator { font-size: 0.9rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.8; margin-bottom: 10px; }
+  .hint-text { font-style: italic; font-size: 1.1rem; margin-bottom: 20px; min-height: 30px; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+  .grid { display: grid; gap: 8px; margin-bottom: 20px; }
+  .row { display: grid; gap: 8px; justify-content: center; }
+  .tile {
+    width: 44px; height: 50px; border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: bold; text-transform: uppercase; transition: all 0.4s ease;
+  }
+  .tile.filled { border-color: var(--accent); background: rgba(255,255,255,0.1); }
+  .tile.correct { background: #6aaa64; border-color: #6aaa64; }
+  .tile.present { background: #c9b458; border-color: #c9b458; }
+  .tile.absent  { background: rgba(0,0,0,0.4); border-color: transparent; opacity: 0.7; }
+  .tile.flip { animation: flip 0.6s ease forwards; }
+
+  .keyboard { width: 100%; max-width: 500px; padding: 10px; }
+  .key-row { display: flex; justify-content: center; margin-bottom: 6px; }
+  .key {
+    flex: 1; height: 45px; margin: 0 3px; border: none; border-radius: 5px;
+    background: rgba(255,255,255,0.15); color: white; font-weight: bold; cursor: pointer;
+    font-size: 1rem; text-transform: uppercase; backdrop-filter: blur(5px);
+  }
+  .key.big { flex: 1.5; font-size: 0.8rem; }
+  .key.correct { background: #6aaa64; }
+  .key.present { background: #c9b458; }
+  .key.absent { background: rgba(0,0,0,0.5); opacity: 0.5; }
+
+  /* --- 4. POLAROID & FINAL MESSAGE --- */
+  .memory-card {
+    background: white; color: #333; padding: 15px 15px 40px 15px;
+    border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transform: rotate(-2deg) scale(0.8); opacity: 0;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 320px; text-align: center; position: absolute; z-index: 50;
+  }
+  .memory-card.show { opacity: 1; transform: rotate(0deg) scale(1); }
+  .memory-img { width: 100%; aspect-ratio: 1/1; background: #eee; object-fit: cover; margin-bottom: 15px; border: 1px solid #ddd; }
+  .memory-text { font-family: 'Brush Script MT', cursive; font-size: 1.5rem; color: #444; }
+  .continue-btn { margin-top: 15px; background: var(--bg-light); color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; }
+
+  .manglish-msg {
+    font-family: 'Dancing Script', cursive; font-size: 1.6rem; color: #ffb7b2;
+    margin-bottom: 30px; max-width: 90%; line-height: 1.5;
+  }
+
+  /* --- 5. LETTER SCREEN ATMOSPHERE --- */
+  #letter-screen {
+    /* Lovely Pink Gradient */
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+    z-index: 200;
+  }
+  
+  /* Floating Hearts Background */
+  .bg-hearts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+  .bg-heart {
+    position: absolute; top: -10%; font-size: clamp(1.5rem, 4vw, 2.5rem); color: rgba(255, 255, 255, 0.6);
+    animation: floatHeart 6s linear infinite;
+  }
+  @keyframes floatHeart {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* --- 6. ENVELOPE & LETTER MECHANICS --- */
+  .envelope-wrapper {
+      position: relative; width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center; perspective: 1000px;
+      z-index: 10;
+  }
+  #envelope {
+      position: relative; width: clamp(280px, 80vw, 350px); height: clamp(180px, 50vw, 220px);
+      background-color: #ffb7b2; border-radius: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  .back-paper {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: #ff9e99; border-radius: 6px; z-index: 1;
+  }
+  .letter-paper {
+      position: absolute; background-color: #fffcf2; 
+      width: 90%; height: 90%; left: 5%; bottom: 0;
+      border-radius: 6px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 5; padding: 20px; 
+      display: flex; flex-direction: column; align-items: center;
+      transition: transform 0.6s ease; cursor: pointer;
+      /* Scroll Fix for Long Text */
+      overflow-y: hidden; 
+  }
+  /* When letter is open */
+  .letter-paper.open {
+      overflow-y: auto; /* Enable scrolling */
+      max-height: 80vh; /* Limit height */
+  }
+
+  .pocket {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+      clip-path: polygon(0 0, 50% 40%, 100% 0, 100% 100%, 0 100%);
+      background: linear-gradient(180deg, #ffb7b2 0%, #ff9e99 100%);
+      border-radius: 0 0 6px 6px; z-index: 10; pointer-events: none;
+  }
+  .flap {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      clip-path: polygon(0 0, 100% 0, 50% 55%);
+      background: linear-gradient(180deg, #ff9e99 0%, #ff8a84 100%);
+      transform-origin: top; transition: transform 0.6s ease, z-index 0.2s; z-index: 20;
+  }
+  .letter-content { opacity: 0; text-align: center; width: 100%; margin-top: 10px; padding-bottom: 20px; }
+  .letter-paper p {
+      font-family: 'Dancing Script', cursive; font-size: clamp(1.1rem, 5vw, 1.4rem); 
+      color: #4a3b32; margin-bottom: 12px; line-height: 1.6;
+      transform: translateY(10px); opacity: 0;
+  }
+  .signature { font-weight: 700; margin-top: 15px; color: #d62828; }
+  
+  /* Burst Hearts coming from INSIDE */
+  .burst-heart { position: absolute; font-size: 1.5rem; color: #d62828; pointer-events: none; z-index: 8; }
+  
+  .sticker {
+      position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 3rem; color: #e63946; z-index: 100; cursor: pointer;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2));
+      animation: heartbeat 1.5s infinite;
+  }
+  @keyframes heartbeat { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.15); } }
+  .flap-open .flap { transform: rotateX(180deg); z-index: 0; }
+  
+  /* Restart Button Style */
+  .restart-btn {
+    margin-top: 20px; padding: 10px 20px; background: #ffb7b2; color: white;
+    border: none; border-radius: 20px; cursor: pointer; font-family: 'Georgia', serif; font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<audio id="music" loop>
+  <source src="Perfect.mp3" type="audio/mp3">
+</audio>
+
+<div id="intro-screen" class="screen">
+  <div style="font-size: 4rem; margin-bottom: 20px;">✨</div>
+  <h1 style="font-weight: normal; margin-bottom: 10px;">A Journey of Us</h1>
+  <p style="opacity: 0.8; margin-bottom: 30px;">Turn up your volume 🔊</p>
+  <button class="start-btn" onclick="startGame()">Begin Journey</button>
+</div>
+
+<div id="game-screen" class="screen hidden">
+  <div class="level-indicator" id="level-label">Memory 1/4</div>
+  <div class="hint-text" id="hint-text">...</div>
+  <div class="grid" id="grid"></div>
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<div id="memory-overlay" class="screen hidden" style="background: rgba(0,0,0,0.8); z-index: 100;">
+  <div class="memory-card" id="memory-card">
+    <img src="" class="memory-img" id="memory-img">
+    <div class="memory-text" id="memory-msg"></div>
+    <button class="continue-btn" onclick="nextLevel()">Keep Going ❤️</button>
+  </div>
+</div>
+
+<div id="final-screen" class="screen hidden">
+  <h1 style="color: var(--gold); margin-bottom: 20px;">Happy Birthday Sneha 🎂</h1>
+  <p class="manglish-msg">
+    Happy Birthday Sneha Chechi! 23 aayi... Ini kuttikal okke 'Chechi' ennalla, 'Aunty' enna vilikkunne. Be prepared! 😜🤣
+  </p>
+  <button class="start-btn" onclick="showLetterScreen()">Read My Letter 💌</button>
+</div>
+
+<div id="letter-screen" class="screen hidden">
+  <div class="bg-hearts">
+     <div class="bg-heart" style="left: 10%; animation-duration: 5s;">&hearts;</div>
+     <div class="bg-heart" style="left: 30%; animation-duration: 7s; animation-delay: 1s;">&hearts;</div>
+     <div class="bg-heart" style="left: 70%; animation-duration: 6s; animation-delay: 2s;">&hearts;</div>
+     <div class="bg-heart" style="left: 90%; animation-duration: 8s;">&hearts;</div>
+  </div>
+
+  <div class="envelope-wrapper">
+    <div id="envelope">
+      <div class="back-paper"></div>
+      
+      <div class="letter-paper" id="letter-paper">
+        <div class="letter-content">
+            <p><b>To My Favorite Person,</b></p>
+            <p><b>Happy Birthday, my love.</b> 🎂✨</p>
+            <p>I want you to know that you are not just a part of my life—you are the heartbeat of it. You live in my thoughts, in my silence, and in every little moment of my day. Loving you feels like the most natural thing I have ever done.</p>
+            <p>I know I am not perfect. <b>I am truly sorry for the last few days—for not calling or talking to you properly.</b> Sometimes I retreat into silence, I keep my feelings locked inside, and I know that distance hurts you. Please believe this: even when my voice is quiet, my heart is always loud with love for you.</p>
+            <p>You are not just someone I love; you are someone I <b>choose</b>. I choose us, I cherish what we have, and I want to keep walking this path with you, hand in hand, for a lifetime.</p>
+            <p>I love you more than words can ever explain. <b>Umma…</b> ❤️</p>
+            <p class="signature">Forever Yours,<br>The one who loves you endlessly &hearts;</p>
+            
+            <button class="restart-btn" onclick="location.reload()">Restart Journey 🔄</button>
+        </div>
+      </div>
+      
+      <div class="pocket"></div>
+      <div class="flap"></div>
+      <div class="sticker">♥</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- 💖 CONFIGURATION 💖 ---
+const levels = [
+  {
+    word: "FIRST",
+    hint: "The moment I forgot how to act normal.",
+    image: "first.jpg", 
+    note: "I knew from that very first moment that you were special."
+  },
+  {
+    word: "VOICE",
+    hint: "The sound that instantly lowers my stress level…",
+    image: "voice.jpg",
+    note: "I could listen to you speak for hours. It's my favorite sound."
+  },
+  {
+    word: "SMILE",
+    hint: "The reason I suddenly forget what I was complaining about.",
+    image: "smile.jpg",
+    note: "Your smile heals my bad days."
+  },
+  {
+    word: "FUTURE",
+    hint: "All my plans, now suspiciously involving you.",
+    image: "future.jpg",
+    note: "Here is to all the tomorrows we will have together."
+  }
+];
+
+const failureMessages = [
+  "Ayyye... ith polum ariyille? 😂",
+  "Oru chance koodi tharam... 😏",
+  "Kashtam thanne... 🙈",
+  "Nthe brain work akunnille? 🧠🤯"
+];
+
+// --- 🎮 GAME LOGIC ---
+const music = document.getElementById('music');
+let currentLevel = 0;
+let currentAttempt = 0;
+let currentGuess = [];
+let isGameOver = false;
+
+// 1. Game Particles
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+class Particle {
+  constructor() {
+    this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 2; this.speedX = Math.random() * 1 - 0.5; this.speedY = Math.random() * 1 - 0.5;
+    this.alpha = Math.random();
+  }
+  update() {
+    this.x += this.speedX; this.y += this.speedY;
+    if (this.x > canvas.width) this.x = 0; if (this.x < 0) this.x = canvas.width;
+    if (this.y > canvas.height) this.y = 0; if (this.y < 0) this.y = canvas.height;
+    this.alpha += (Math.random() - 0.5) * 0.05;
+    if(this.alpha < 0) this.alpha = 0; if(this.alpha > 1) this.alpha = 1;
+  }
+  draw() { ctx.fillStyle = `rgba(255, 220, 180, ${this.alpha})`; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+}
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animateParticles);
+}
+for (let i = 0; i < 50; i++) particles.push(new Particle());
+animateParticles();
+
+// 2. Game Start
+function startGame() {
+  document.getElementById('intro-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  music.volume = 0.1;
+  music.play().then(() => {
+    let vol = 0.1;
+    const fade = setInterval(() => {
+      if (vol < 0.3) { vol += 0.05; music.volume = vol; } else { clearInterval(fade); }
+    }, 200);
+  }).catch(e => console.log("Audio interaction needed"));
+  initLevel(); initKeyboard();
+}
+
+function initLevel() {
+  currentAttempt = 0; currentGuess = []; isGameOver = false;
+  const data = levels[currentLevel];
+  document.getElementById('level-label').textContent = `MEMORY ${currentLevel + 1}/${levels.length}`;
+  document.getElementById('hint-text').textContent = data.hint;
+  const gridEl = document.getElementById('grid'); gridEl.innerHTML = '';
+  const wordLen = data.word.length;
+  for(let r=0; r<5; r++) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.style.gridTemplateColumns = `repeat(${wordLen}, 44px)`;
+    for(let c=0; c<wordLen; c++) {
+      const tile = document.createElement('div'); tile.className = 'tile'; row.appendChild(tile);
+    }
+    gridEl.appendChild(row);
+  }
+  document.querySelectorAll('.key').forEach(k => k.className = 'key');
+}
+
+function initKeyboard() {
+  const keyboardEl = document.getElementById('keyboard');
+  const keys = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  keyboardEl.innerHTML = '';
+  keys.forEach((rowStr, i) => {
+    const rowDiv = document.createElement('div'); rowDiv.className = 'key-row';
+    if(i===2) {
+      const btn = document.createElement('button'); btn.className = 'key big'; btn.textContent = '❤️'; btn.onclick = submitGuess; rowDiv.appendChild(btn);
+    }
+    rowStr.split('').forEach(char => {
+      const btn = document.createElement('button'); btn.className = 'key'; btn.textContent = char; btn.dataset.key = char; btn.onclick = () => handleInput(char); rowDiv.appendChild(btn);
+    });
+    if(i===2) {
+      const btn = document.createElement('button'); btn.className = 'key big'; btn.textContent = '⌫'; btn.onclick = handleBackspace; rowDiv.appendChild(btn);
+    }
+    keyboardEl.appendChild(rowDiv);
+  });
+}
+
+function handleInput(char) { if(isGameOver) return; const wordLen = levels[currentLevel].word.length; if(currentGuess.length < wordLen) { currentGuess.push(char); updateGrid(); } }
+function handleBackspace() { if(isGameOver) return; if(currentGuess.length > 0) { currentGuess.pop(); updateGrid(); } }
+function updateGrid() {
+  const row = document.getElementById('grid').children[currentAttempt];
+  Array.from(row.children).forEach((tile, i) => {
+    tile.textContent = currentGuess[i] || '';
+    if(currentGuess[i]) tile.classList.add('filled'); else tile.classList.remove('filled');
+  });
+}
+
+function submitGuess() {
+  if(isGameOver) return;
+  const target = levels[currentLevel].word.toUpperCase();
+  if(currentGuess.length !== target.length) return;
+  const guessStr = currentGuess.join('').toUpperCase();
+  const row = document.getElementById('grid').children[currentAttempt];
+  currentGuess.forEach((char, i) => {
+    const tile = row.children[i];
+    const key = document.querySelector(`.key[data-key="${char.toLowerCase()}"]`);
+    const letter = char.toUpperCase();
+    setTimeout(() => {
+      tile.classList.add('flip');
+      if (letter === target[i]) { tile.classList.add('correct'); if(key) key.classList.add('correct'); }
+      else if (target.includes(letter)) { tile.classList.add('present'); if(key) key.classList.add('present'); }
+      else { tile.classList.add('absent'); if(key) key.classList.add('absent'); }
+    }, i * 200);
+  });
+  setTimeout(() => {
+    if (guessStr === target) { isGameOver = true; showMemory(); }
+    else {
+      currentAttempt++;
+      if(currentAttempt >= 5) {
+        const randomMsg = failureMessages[Math.floor(Math.random() * failureMessages.length)];
+        setTimeout(() => { alert(randomMsg); initLevel(); }, 1000);
+      } else { currentGuess = []; }
+    }
+  }, target.length * 200 + 500);
+}
+
+function showMemory() {
+  const overlay = document.getElementById('memory-overlay'); const card = document.getElementById('memory-card'); const data = levels[currentLevel];
+  document.getElementById('memory-img').src = data.image; document.getElementById('memory-msg').textContent = data.note;
+  overlay.classList.remove('hidden'); setTimeout(() => card.classList.add('show'), 100);
+}
+function nextLevel() {
+  const card = document.getElementById('memory-card'); card.classList.remove('show');
+  setTimeout(() => {
+    document.getElementById('memory-overlay').classList.add('hidden');
+    currentLevel++; if(currentLevel < levels.length) initLevel(); else showFinale();
+  }, 500);
+}
+function showFinale() { document.getElementById('game-screen').classList.add('hidden'); document.getElementById('final-screen').classList.remove('hidden'); }
+
+// --- 💌 LETTER ANIMATION ---
+function showLetterScreen() {
+    document.getElementById('final-screen').classList.add('hidden');
+    document.getElementById('letter-screen').classList.remove('hidden');
+}
+
+const envelope = document.getElementById('envelope');
+const sticker = document.querySelector('.sticker');
+const letterPaper = document.getElementById('letter-paper');
+const letterContent = document.querySelector('.letter-content');
+const paragraphs = document.querySelectorAll('.letter-paper p');
+
+let isFlapOpen = false;
+let isLetterOpen = false;
+
+sticker.addEventListener('click', () => {
+    if (!isFlapOpen) {
+        isFlapOpen = true;
+        gsap.to(sticker, { scale: 1.5, opacity: 0, duration: 0.4 });
+        envelope.classList.add('flap-open');
+        setTimeout(releaseHearts, 300); // Hearts burst from inside
+        gsap.to(letterPaper, { y: -50, duration: 0.5, delay: 0.5, ease: "back.out(1.5)" });
+    }
+});
+
+letterPaper.addEventListener('click', () => {
+    if (isFlapOpen && !isLetterOpen) {
+        isLetterOpen = true;
+        const tl = gsap.timeline();
+        tl.to(letterPaper, { y: -250, duration: 0.8, ease: "back.in(1.2)", zIndex: 100 })
+        .to(letterPaper, { 
+            width: '90vw', maxWidth: '500px', height: '80vh', 
+            position: 'fixed', top: '50%', left: '50%', xPercent: -50, yPercent: -50, y: 0,
+            duration: 1, boxShadow: "0 30px 60px rgba(0,0,0,0.4)", ease: "power2.out",
+            onComplete: () => { letterPaper.classList.add('open'); } // Enable scrolling
+        })
+        .to("#envelope", { opacity: 0.5, duration: 0.5 }, "-=1")
+        .to(letterContent, { opacity: 1, duration: 0.5 })
+        .to(paragraphs, { y: 0, opacity: 1, duration: 1, stagger: 0.7, ease: "power2.out" });
+    }
+});
+
+function releaseHearts() {
+    const count = 30;
+    // We don't need screen coordinates anymore because we are attaching to the envelope
+    for (let i = 0; i < count; i++) {
+        const heart = document.createElement('div');
+        heart.classList.add('burst-heart');
+        heart.innerHTML = '❤';
+        
+        // FIX: Append to the envelope, NOT the body
+        envelope.appendChild(heart);
+        
+        // Set initial position to the CENTER of the envelope
+        gsap.set(heart, { 
+            left: '50%', 
+            top: '50%', // Start from the middle
+            xPercent: -50, 
+            yPercent: -50, 
+            scale: 0 
+        });
+
+        // Calculate random explosion directions
+        // We use window width to ensure they fly far enough out
+        const randomX = (Math.random() - 0.5) * window.innerWidth * 0.5; 
+        const randomY = - (Math.random() * 300) - 100; // Force them to fly UPWARDS out of the pocket
+
+        gsap.to(heart, {
+            x: randomX,
+            y: randomY,
+            rotation: Math.random() * 360,
+            scale: 0.5 + Math.random(),
+            opacity: 0,
+            duration: 1.5 + Math.random(),
+            ease: "power2.out",
+            onComplete: () => heart.remove()
+        });
+    }
+}
+</script>
+</body>
+</html>
